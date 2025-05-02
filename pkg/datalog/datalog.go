@@ -16,9 +16,11 @@ const (
 
 type Row struct {
 	ID       int
+	Name     string
 	Time     string
 	Date     string
-	Lat, Lon string
+	Lat, Lon float64
+	NS, EW   string
 	Alt      float64
 	Sats     int
 	Baro     float64
@@ -40,17 +42,18 @@ type DataLog struct {
 func CreateLog(file string) (*DataLog, error) {
 	log := DataLog{}
 
-	// check file, if exists use it
-	if _, err := os.Stat(file); err == nil {
-		log.FilePath = file
-	} else {
-		// create it
-		f, err := os.Create(file)
-		if err != nil {
-			return nil, err
-		}
-		f.Close()
-	}
+	// // check file, if exists use it
+	// if _, err := os.Stat(file); err == nil {
+	// 	log.FilePath = file
+	// } else {
+	// 	// create it
+	// 	f, err := os.Create(file)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	f.Close()
+	// }
+	log.FilePath = file
 
 	// GUI
 	table := widget.NewTableWithHeaders(func() (int, int) {
@@ -70,13 +73,28 @@ func CreateLog(file string) (*DataLog, error) {
 			case 1:
 				l.SetText(log.Rows[id.Row].Time)
 			case 2:
-				l.SetText(log.Rows[id.Row].Lat)
+				l.SetText(strconv.FormatFloat(log.Rows[id.Row].Lat, 'f', 6, 64) + log.Rows[id.Row].NS)
 			case 3:
-				l.SetText(log.Rows[id.Row].Lon)
+				l.SetText(strconv.FormatFloat(log.Rows[id.Row].Lon, 'f', 6, 64) + log.Rows[id.Row].EW)
 			case 4:
 				l.SetText(strconv.FormatFloat(log.Rows[id.Row].Alt, 'f', 2, 64))
 			case 5:
 				l.SetText(strconv.Itoa(log.Rows[id.Row].Sats))
+			case 6:
+				l.SetText(strconv.FormatFloat(log.Rows[id.Row].Baro, 'f', 1, 64))
+			case 7:
+				l.SetText(strconv.FormatFloat(log.Rows[id.Row].Hdg, 'f', 2, 64))
+			case 8:
+				l.SetText(strconv.FormatFloat(log.Rows[id.Row].Spd, 'f', 2, 64))
+			case 9:
+				l.SetText(strconv.FormatFloat(log.Rows[id.Row].Arate, 'f', 2, 64))
+			case 10:
+				l.SetText(strconv.FormatFloat(log.Rows[id.Row].Tin, 'f', 2, 64))
+			case 11:
+				l.SetText(strconv.FormatFloat(log.Rows[id.Row].Tout, 'f', 2, 64))
+			case 12:
+				l.SetText(strconv.FormatFloat(log.Rows[id.Row].VBatt, 'f', 2, 64))
+
 			}
 
 		})
@@ -87,6 +105,13 @@ func CreateLog(file string) (*DataLog, error) {
 	table.SetColumnWidth(3, 100)
 	table.SetColumnWidth(4, 100)
 	table.SetColumnWidth(5, 30)
+	table.SetColumnWidth(6, 50)
+	table.SetColumnWidth(7, 30)
+	table.SetColumnWidth(8, 30)
+	table.SetColumnWidth(9, 30)
+	table.SetColumnWidth(10, 30)
+	table.SetColumnWidth(11, 30)
+	table.SetColumnWidth(12, 30)
 
 	table.CreateHeader = func() fyne.CanvasObject {
 		return widget.NewButton("000", func() {})
@@ -132,8 +157,8 @@ func (l *DataLog) Append(row Row) error {
 	if err != nil {
 		return err
 	}
-	_, err = file.WriteString(fmt.Sprintf("%s,%s,%s,%s,%.2f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
-		row.Date, row.Time, row.Lat, row.Lon, row.Alt, row.Sats, row.Hdg,
+	_, err = file.WriteString(fmt.Sprintf("%s,%s,%s,%.6f%s,%.6f%s,%.6f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
+		row.Name, row.Date, row.Time, row.Lat, row.NS, row.Lon, row.EW, row.Alt, row.Sats, row.Hdg,
 		row.Spd, row.Arate, row.Tin, row.Tout, row.VBatt,
 	))
 	err = file.Close()
