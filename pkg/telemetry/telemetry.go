@@ -26,39 +26,46 @@ const (
 )
 
 type Telemetry struct {
-	ID    string
-	Msg   string
-	Lat   string
-	NS    string
-	Lon   string
-	EW    string
-	Alt   float64
-	Hdg   float64
-	Spd   float64
-	Sats  int
-	Vbat  float64
-	Baro  float64
-	Tin   float64
-	Tout  float64
-	Arate float64
-	Date  string
-	Time  string
-	Sep   string
-	Hpwr  bool
+	ID    string  `json:"id"`
+	Msg   string  `json:"msg"`
+	Lat   float64 `json:"lat"`
+	NS    string  `json:"ns"`
+	Lon   float64 `json:"lon"`
+	EW    string  `json:"ew"`
+	Alt   float64 `json:"alt"`
+	Hdg   float64 `json:"hdg"`
+	Spd   float64 `json:"spd"`
+	Sats  int     `json:"sats"`
+	Vbat  float64 `json:"vbat"`
+	Baro  float64 `json:"baro"`
+	Tin   float64 `json:"tin"`
+	Tout  float64 `json:"tout"`
+	Arate float64 `json:"arate"`
+	Date  string  `json:"date"`
+	Time  string  `json:"time"`
+	Sep   string  `json:"sep"`
+	Hpwr  bool    `json:"hpwr"`
 }
 
 func (t *Telemetry) ParsePacket(packet string, separator string) error {
 	fields := strings.Split(packet, separator)
 	if len(fields) >= TELEMETRY_FIELDS {
 		var err error
+		t.ID = strings.Split(fields[FIELD_LAT], "!")[0][2:]
 		t.Date = fields[FIELD_DAT]
 		t.Time = fields[FIELD_TIM]
 		hdg, err := strconv.ParseFloat(strings.Split(fields[FIELD_LON], "O")[1], 64)
 		t.Hdg = hdg
 		spd, err := strconv.ParseFloat(fields[FIELD_SPD], 64)
 		t.Spd = spd
-		t.Lat = strings.Split(strings.Split(fields[FIELD_GPS], "=")[1], ",")[0]
-		t.Lon = strings.Split(strings.Split(fields[FIELD_GPS], "=")[1], ",")[1]
+		lat := strings.Split(strings.Split(fields[FIELD_GPS], "=")[1], ",")[0]
+		latNum, err := strconv.ParseFloat(lat[:len(lat)-1], 64)
+		t.Lat = latNum
+		t.NS = string(lat[len(lat)-1])
+		lon := strings.Split(strings.Split(fields[FIELD_GPS], "=")[1], ",")[1]
+		lonNum, err := strconv.ParseFloat(lon[:len(lon)-1], 64)
+		t.Lon = lonNum
+		t.EW = string(lon[len(lon)-1])
 		alt, err := strconv.ParseFloat(strings.Split(fields[FIELD_ALT], "=")[1], 64)
 		t.Alt = alt
 		vbatt, err := strconv.ParseFloat(strings.Split(fields[FIELD_VLT], "=")[1], 64)

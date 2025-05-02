@@ -84,15 +84,17 @@ func main() {
 				fyne.Do(func() {
 					main.Update(telem)
 					err = log.Append(datalog.Row{
-						ID: serial.Packets, Date: telem.Date, Time: telem.Time,
-						Lat: telem.Lat, Lon: telem.Lon, Alt: telem.Alt, Sats: telem.Sats,
+						ID: serial.Packets, Name: telem.ID, Date: telem.Date, Time: telem.Time,
+						Lat: telem.Lat, NS: telem.NS, Lon: telem.Lon, EW: telem.EW, Alt: telem.Alt, Sats: telem.Sats,
 						Hdg: telem.Hdg, Spd: telem.Spd, Arate: telem.Arate,
 						Tin: telem.Tin, Tout: telem.Tout, VBatt: telem.Vbat,
 					})
 					if err != nil {
 						console.Append(time.Now().Format(time.TimeOnly) + fmt.Sprintf(" :: Error adding data to the log: %v", err))
 					}
-					console.Append(time.Now().Format(time.TimeOnly) + fmt.Sprintf(" :: Decoded telemetry: %s, %s, %.2f m, %d sats", telem.Lat, telem.Lon, telem.Alt, telem.Sats))
+					console.Append(time.Now().Format(time.TimeOnly) +
+						fmt.Sprintf(" :: Decoded telemetry: %.6f%s, %.6f%s, %.2f m, %d sats",
+							telem.Lat, telem.NS, telem.Lon, telem.EW, telem.Alt, telem.Sats))
 					labelStatus.SetText(fmt.Sprintf("Decoded telemetry packet at %s", time.Now().Format(time.TimeOnly)))
 				})
 			}

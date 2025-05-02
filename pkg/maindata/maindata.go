@@ -101,8 +101,8 @@ func CreateMain() *Main {
 }
 
 func (m *Main) Update(t telemetry.Telemetry) {
-	m.DataGPS.SetText(t.Lat + t.NS + ", " + t.Lon + t.EW)
-	url, _ := url.Parse("http://maps.google.com/maps?z=12&t=m&q=loc:" + t.Lat + "+" + t.Lon)
+	m.DataGPS.SetText(fmt.Sprintf("%.6f", t.Lat) + t.NS + ", " + fmt.Sprintf("%.6f", t.Lon) + t.EW)
+	url, _ := url.Parse("http://maps.google.com/maps?z=12&t=m&q=loc:" + fmt.Sprintf("%.6f", t.Lat) + t.NS + "+" + fmt.Sprintf("%.6f", t.Lon) + t.EW)
 	m.DataGPS.SetURL(url)
 	m.DataAlt.SetText(fmt.Sprintf("%.2f m", t.Alt))
 	m.DataBaro.SetText(fmt.Sprintf("%.2f mBar", t.Baro))
