@@ -21,13 +21,13 @@ type Row struct {
 	Lat, Lon string
 	Alt      float64
 	Sats     int
-	Baro     string
-	VBatt    string
-	Tin      string
-	Tout     string
-	Hdg      string
-	Spd      string
-	Arate    string
+	Baro     float64
+	VBatt    float64
+	Tin      float64
+	Tout     float64
+	Hdg      float64
+	Spd      float64
+	Arate    float64
 }
 
 type DataLog struct {
@@ -132,7 +132,7 @@ func (l *DataLog) Append(row Row) error {
 	if err != nil {
 		return err
 	}
-	_, err = file.WriteString(fmt.Sprintf("%s,%s,%s,%s,%.2f,%d,%s,%s,%s,%s,%s,%s\n",
+	_, err = file.WriteString(fmt.Sprintf("%s,%s,%s,%s,%.2f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
 		row.Date, row.Time, row.Lat, row.Lon, row.Alt, row.Sats, row.Hdg,
 		row.Spd, row.Arate, row.Tin, row.Tout, row.VBatt,
 	))
