@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	numColumns = 6
+	numColumns = 13
 )
 
 type Row struct {
@@ -105,13 +105,13 @@ func CreateLog(file string) (*DataLog, error) {
 	table.SetColumnWidth(3, 100)
 	table.SetColumnWidth(4, 100)
 	table.SetColumnWidth(5, 30)
-	table.SetColumnWidth(6, 50)
-	table.SetColumnWidth(7, 30)
-	table.SetColumnWidth(8, 30)
-	table.SetColumnWidth(9, 30)
-	table.SetColumnWidth(10, 30)
-	table.SetColumnWidth(11, 30)
-	table.SetColumnWidth(12, 30)
+	table.SetColumnWidth(6, 100)
+	table.SetColumnWidth(7, 60)
+	table.SetColumnWidth(8, 60)
+	table.SetColumnWidth(9, 60)
+	table.SetColumnWidth(10, 80)
+	table.SetColumnWidth(11, 80)
+	table.SetColumnWidth(12, 80)
 
 	table.CreateHeader = func() fyne.CanvasObject {
 		return widget.NewButton("000", func() {})
@@ -136,6 +136,20 @@ func CreateLog(file string) (*DataLog, error) {
 				b.SetText("Altitude")
 			case 5:
 				b.SetText("Sats")
+			case 6:
+				b.SetText("Baro")
+			case 7:
+				b.SetText("Heading")
+			case 8:
+				b.SetText("Speed")
+			case 9:
+				b.SetText("A.rate")
+			case 10:
+				b.SetText("Temp int")
+			case 11:
+				b.SetText("Temp ext")
+			case 12:
+				b.SetText("Batt")
 			}
 			b.Importance = widget.MediumImportance
 			b.Enable()
