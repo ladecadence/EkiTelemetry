@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/ladecadence/EkiTelemetry/pkg/api"
 	"github.com/ladecadence/EkiTelemetry/pkg/config"
 	"github.com/ladecadence/EkiTelemetry/pkg/console"
 	"github.com/ladecadence/EkiTelemetry/pkg/datalog"
@@ -34,7 +35,7 @@ func clock(labelClock *widget.Label) {
 	}
 }
 
-func receiveTelemetry(data chan string, console *console.Console, main *maindata.Main, log *datalog.DataLog, serial *serialport.Serial, labelStatus *widget.Label) {
+func receiveTelemetry(config *config.Config, data chan string, console *console.Console, main *maindata.Main, log *datalog.DataLog, serial *serialport.Serial, labelStatus *widget.Label) {
 	for {
 		msg := <-data
 		fyne.Do(func() { // fyne.Do for safe GUI updating between threads
@@ -63,6 +64,16 @@ func receiveTelemetry(data chan string, console *console.Console, main *maindata
 					fmt.Sprintf(" :: Decoded telemetry: %.6f%s, %.6f%s, %.2f m, %d sats",
 						telem.Lat, telem.NS, telem.Lon, telem.EW, telem.Alt, telem.Sats))
 				labelStatus.SetText(fmt.Sprintf("Decoded telemetry packet at %s", time.Now().Format(time.TimeOnly)))
+
+				// upload
+				if config.Data.Server != "" && config.Data.User != "" && config.Data.Password != "" {
+					api := api.API{Server: config.Data.Server, User: config.Data.User, Password: config.Data.Password}
+					err := api.DataUpload(telem)
+					if err != nil {
+						labelStatus.SetText("Problem uploading telemetry.")
+						console.Append(fmt.Sprintf(" :: Error uploading telemetry: %v", err))
+					}
+				}
 			})
 		}
 	}
@@ -76,15 +87,15 @@ func receiveSSDV(ssdvChan chan []byte, console *console.Console, image *ssdvimag
 			console.Append(time.Now().Format(time.TimeOnly) + fmt.Sprintf(" :: Received SSDV packet %d of image %d", info.Packet, info.Image))
 			labelStatus.SetText(fmt.Sprintf("Received SSDV packet at %s", time.Now().Format(time.TimeOnly)))
 		})
-		imagePath, err := ssdv.SSDVDecodePacket(data, config.Data.ImageFolder)
+		imagePath, missionName, err := ssdv.SSDVDecodePacket(data, config.Data.ImageFolder)
 		if err != nil {
 			console.Append(fmt.Sprintf("Error decoding SSDV: %v", err))
 		} else {
 			fyne.Do(func() {
 				if !info.LastPacket {
-					image.UpdateImage(imagePath, fmt.Sprintf("Receiving image %s...", imagePath))
+					image.UpdateImage(info.Image, imagePath, fmt.Sprintf("Receiving image %s...", imagePath), missionName)
 				} else {
-					image.UpdateImage(imagePath, fmt.Sprintf("Received image %s.", imagePath))
+					image.UpdateImage(info.Image, imagePath, fmt.Sprintf("Received image %s.", imagePath), missionName)
 				}
 			})
 		}
@@ -100,7 +111,7 @@ func main() {
 	mainWindow := telemApp.NewWindow("EKI Telemetry")
 	r, _ := fyne.LoadResourceFromPath("assets/eki-2.png")
 	mainWindow.SetIcon(r)
-	mainWindow.Resize(fyne.NewSize(800, 600))
+	mainWindow.Resize(fyne.NewSize(900, 700))
 
 	main := maindata.CreateMain()
 	console := console.CreateConsole()
@@ -109,7 +120,7 @@ func main() {
 	if err != nil {
 		fmt.Errorf("Can't create log file %v", err)
 	}
-	image := ssdvimage.CreateSSDVImage()
+	image := ssdvimage.CreateSSDVImage(config)
 
 	serial, err := serialport.NewSerial(config.Data.PortName, 115200)
 	if err != nil {
@@ -145,7 +156,7 @@ func main() {
 	// threads
 	// telemetry
 	go func() {
-		receiveTelemetry(dataChan, console, main, log, serial, labelStatus)
+		receiveTelemetry(config, dataChan, console, main, log, serial, labelStatus)
 	}()
 
 	// ssdv
