@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ladecadence/EkiTelemetry/pkg/config"
@@ -18,6 +19,77 @@ import (
 	"github.com/ladecadence/EkiTelemetry/pkg/ssdvimage"
 	"github.com/ladecadence/EkiTelemetry/pkg/telemetry"
 )
+
+func clock(labelClock *widget.Label) {
+	ticker := "🟠"
+	for range time.Tick(time.Second) {
+		fyne.Do(func() {
+			labelClock.SetText(time.Now().Format(time.TimeOnly) + " " + ticker)
+			if ticker == "🟠" {
+				ticker = "🟢"
+			} else {
+				ticker = "🟠"
+			}
+		})
+	}
+}
+
+func receiveTelemetry(data chan string, console *console.Console, main *maindata.Main, log *datalog.DataLog, serial *serialport.Serial, labelStatus *widget.Label) {
+	for {
+		msg := <-data
+		fyne.Do(func() { // fyne.Do for safe GUI updating between threads
+			console.Append(time.Now().Format(time.TimeOnly) + " :: Received packet")
+		})
+		telem := telemetry.Telemetry{}
+		err := telem.ParsePacket(msg, "/")
+		if err != nil {
+			fyne.Do(func() {
+				console.Append(time.Now().Format(time.TimeOnly) + " :: Error decoding telemetry")
+				labelStatus.SetText(fmt.Sprintf("Error decoding telemetry at %s", time.Now().Format(time.TimeOnly)))
+			})
+		} else {
+			fyne.Do(func() {
+				main.Update(telem)
+				err = log.Append(datalog.Row{
+					ID: serial.Packets, Name: telem.ID, Date: telem.Date, Time: telem.Time,
+					Lat: telem.Lat, NS: telem.NS, Lon: telem.Lon, EW: telem.EW, Alt: telem.Alt, Sats: telem.Sats,
+					Hdg: telem.Hdg, Spd: telem.Spd, Arate: telem.Arate,
+					Tin: telem.Tin, Tout: telem.Tout, VBatt: telem.Vbat,
+				})
+				if err != nil {
+					console.Append(time.Now().Format(time.TimeOnly) + fmt.Sprintf(" :: Error adding data to the log: %v", err))
+				}
+				console.Append(time.Now().Format(time.TimeOnly) +
+					fmt.Sprintf(" :: Decoded telemetry: %.6f%s, %.6f%s, %.2f m, %d sats",
+						telem.Lat, telem.NS, telem.Lon, telem.EW, telem.Alt, telem.Sats))
+				labelStatus.SetText(fmt.Sprintf("Decoded telemetry packet at %s", time.Now().Format(time.TimeOnly)))
+			})
+		}
+	}
+}
+
+func receiveSSDV(ssdvChan chan []byte, console *console.Console, image *ssdvimage.SSDVImage, config *config.Config, labelStatus *widget.Label) {
+	for {
+		data := <-ssdvChan
+		info := ssdv.SSDVPacketInfo(data)
+		fyne.Do(func() {
+			console.Append(time.Now().Format(time.TimeOnly) + fmt.Sprintf(" :: Received SSDV packet %d of image %d", info.Packet, info.Image))
+			labelStatus.SetText(fmt.Sprintf("Received SSDV packet at %s", time.Now().Format(time.TimeOnly)))
+		})
+		imagePath, err := ssdv.SSDVDecodePacket(data, config.Data.ImageFolder)
+		if err != nil {
+			console.Append(fmt.Sprintf("Error decoding SSDV: %v", err))
+		} else {
+			fyne.Do(func() {
+				if !info.LastPacket {
+					image.UpdateImage(imagePath, fmt.Sprintf("Receiving image %s...", imagePath))
+				} else {
+					image.UpdateImage(imagePath, fmt.Sprintf("Received image %s.", imagePath))
+				}
+			})
+		}
+	}
+}
 
 func main() {
 	dataChan := make(chan string)
@@ -56,8 +128,11 @@ func main() {
 	tabs.SetTabLocation(container.TabLocationLeading)
 	//tabs.SetTabLocation(container.TabLocationTop)
 
+	// status bar
 	labelStatus := widget.NewLabel("Waiting for data...")
-	gui := container.NewBorder(nil, labelStatus, nil, nil, tabs)
+	labelTime := widget.NewLabel("")
+	statusBar := container.NewHBox(labelStatus, layout.NewSpacer(), labelTime)
+	gui := container.NewBorder(nil, statusBar, nil, nil, tabs)
 
 	mainWindow.SetContent(gui)
 
@@ -66,64 +141,20 @@ func main() {
 	if err != nil {
 		fmt.Printf("Problem with the serial port: %v", err)
 	}
+
+	// threads
 	// telemetry
 	go func() {
-		for {
-			msg := <-dataChan
-			fyne.Do(func() { // fyne.Do for safe GUI updating between threads
-				console.Append(time.Now().Format(time.TimeOnly) + " :: Received packet")
-			})
-			telem := telemetry.Telemetry{}
-			err := telem.ParsePacket(msg, "/")
-			if err != nil {
-				fyne.Do(func() {
-					console.Append(time.Now().Format(time.TimeOnly) + " :: Error decoding telemetry")
-					labelStatus.SetText(fmt.Sprintf("Error decoding telemetry at %s", time.Now().Format(time.TimeOnly)))
-				})
-			} else {
-				fyne.Do(func() {
-					main.Update(telem)
-					err = log.Append(datalog.Row{
-						ID: serial.Packets, Name: telem.ID, Date: telem.Date, Time: telem.Time,
-						Lat: telem.Lat, NS: telem.NS, Lon: telem.Lon, EW: telem.EW, Alt: telem.Alt, Sats: telem.Sats,
-						Hdg: telem.Hdg, Spd: telem.Spd, Arate: telem.Arate,
-						Tin: telem.Tin, Tout: telem.Tout, VBatt: telem.Vbat,
-					})
-					if err != nil {
-						console.Append(time.Now().Format(time.TimeOnly) + fmt.Sprintf(" :: Error adding data to the log: %v", err))
-					}
-					console.Append(time.Now().Format(time.TimeOnly) +
-						fmt.Sprintf(" :: Decoded telemetry: %.6f%s, %.6f%s, %.2f m, %d sats",
-							telem.Lat, telem.NS, telem.Lon, telem.EW, telem.Alt, telem.Sats))
-					labelStatus.SetText(fmt.Sprintf("Decoded telemetry packet at %s", time.Now().Format(time.TimeOnly)))
-				})
-			}
-		}
+		receiveTelemetry(dataChan, console, main, log, serial, labelStatus)
 	}()
 
 	// ssdv
 	go func() {
-		for {
-			data := <-ssdvChan
-			info := ssdv.SSDVPacketInfo(data)
-			fyne.Do(func() {
-				console.Append(time.Now().Format(time.TimeOnly) + fmt.Sprintf(" :: Received SSDV packet %d of image %d", info.Packet, info.Image))
-				labelStatus.SetText(fmt.Sprintf("Received SSDV packet at %s", time.Now().Format(time.TimeOnly)))
-			})
-			imagePath, err := ssdv.SSDVDecodePacket(data, config.Data.ImageFolder)
-			if err != nil {
-				console.Append(fmt.Sprintf("Error decoding SSDV: %v", err))
-			} else {
-				fyne.Do(func() {
-					if !info.LastPacket {
-						image.UpdateImage(imagePath, fmt.Sprintf("Receiving image %s...", imagePath))
-					} else {
-						image.UpdateImage(imagePath, fmt.Sprintf("Received image %s.", imagePath))
-					}
-				})
-			}
-		}
+		receiveSSDV(ssdvChan, console, image, config, labelStatus)
 	}()
+
+	// clock
+	go clock(labelTime)
 
 	mainWindow.ShowAndRun()
 }
