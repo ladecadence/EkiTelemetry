@@ -20,6 +20,9 @@ type ConfigData struct {
 	PortName    string
 	LogFile     string
 	ImageFolder string
+	Server      string
+	User        string
+	Password    string
 }
 
 type Config struct {
@@ -66,6 +69,13 @@ func CreateConfig(w *fyne.Window) *Config {
 	})
 	groupImages := container.NewBorder(nil, nil, nil, buttonImages, inputImages)
 
+	labelServer := widget.NewLabel("Server:")
+	labelUser := widget.NewLabel("User:")
+	labelPassword := widget.NewLabel("Password:")
+	inputServer := widget.NewEntry()
+	inputUser := widget.NewEntry()
+	inputPassword := widget.NewPasswordEntry()
+
 	buttonSave := widget.NewButton("Save", func() {
 		config.SaveConfig()
 	})
@@ -77,6 +87,12 @@ func CreateConfig(w *fyne.Window) *Config {
 		groupLog,
 		labelImages,
 		groupImages,
+		labelServer,
+		inputServer,
+		labelUser,
+		inputUser,
+		labelPassword,
+		inputPassword,
 		buttonSave,
 	)
 	content := container.NewPadded(padded)
@@ -94,6 +110,9 @@ func CreateConfig(w *fyne.Window) *Config {
 	}
 	inputLog.SetText(config.Data.LogFile)
 	inputImages.SetText(config.Data.ImageFolder)
+	inputServer.SetText(config.Data.Server)
+	inputUser.SetText(config.Data.User)
+	inputPassword.SetText(config.Data.Password)
 
 	return &config
 }
