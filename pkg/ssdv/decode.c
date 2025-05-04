@@ -5,7 +5,7 @@
 #include "ssdv.h"
 #include "decode.h"
 
-decode_info_t decode_ssdv_file(char* file_in, char* file_out) {
+decode_info_t decode_ssdv_file(char* file_in, char* file_out, char* mission) {
     decode_info_t info;
     int i=0;
     FILE *fin = stdin;
@@ -58,6 +58,7 @@ decode_info_t decode_ssdv_file(char* file_in, char* file_out) {
 
         info.packet_id = p.packet_id;
         info.image_id = p.image_id;
+        strncpy(mission, p.callsign_s, 7);
         /* Feed it to the decoder */
         ssdv_dec_feed(&ssdv, pkt);
         i++;

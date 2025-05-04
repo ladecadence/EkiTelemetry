@@ -38,7 +38,7 @@ func SSDVPacketInfo(packet []byte) SSDVBasicInfo {
 	return info
 }
 
-func SSDVDecodePacket(packet []byte, path string) (string, error) {
+func SSDVDecodePacket(packet []byte, path string) (string, string, error) {
 	info := SSDVPacketInfo(packet)
 
 	// files
@@ -52,13 +52,13 @@ func SSDVDecodePacket(packet []byte, path string) (string, error) {
 	if info.Packet == 0 {
 		file, err = os.Create(input)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	} else {
 		// append
 		file, err = os.OpenFile(input, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
@@ -71,9 +71,11 @@ func SSDVDecodePacket(packet []byte, path string) (string, error) {
 	// decode
 	in := C.CString(input)
 	out := C.CString(output)
+	mission := C.CString("       ") // 7 chars
 	defer C.free(unsafe.Pointer(in))
 	defer C.free(unsafe.Pointer(out))
-	data := C.decode_ssdv_file(in, out)
+	defer C.free(unsafe.Pointer(mission))
+	data := C.decode_ssdv_file(in, out, mission)
 	fmt.Printf("Paquetes %d, Imagen %d\n", data.decoded_packets, data.image_id)
-	return output, nil
+	return output, C.GoString(mission), nil
 }

@@ -13,6 +13,6 @@ typedef struct decode_info {
     int packet_id;
 } decode_info_t;
 
-decode_info_t decode_ssdv_file(char* file_in, char* file_out);
+decode_info_t decode_ssdv_file(char* file_in, char* file_out, char* mission);
 
 #endif
