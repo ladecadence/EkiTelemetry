@@ -73,8 +73,11 @@ func CreateConfig(w *fyne.Window) *Config {
 	labelUser := widget.NewLabel("User:")
 	labelPassword := widget.NewLabel("Password:")
 	inputServer := widget.NewEntry()
+	inputServer.OnChanged = func(s string) { config.Data.Server = s }
 	inputUser := widget.NewEntry()
+	inputUser.OnChanged = func(s string) { config.Data.User = s }
 	inputPassword := widget.NewPasswordEntry()
+	inputPassword.OnChanged = func(s string) { config.Data.Password = s }
 
 	buttonSave := widget.NewButton("Save", func() {
 		config.SaveConfig()
