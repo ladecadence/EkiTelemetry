@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -118,15 +120,16 @@ func main() {
 	config := config.CreateConfig(&mainWindow)
 	log, err := datalog.CreateLog(config.Data.LogFile)
 	if err != nil {
-		fmt.Errorf("Can't create log file %v", err)
+		dialog.ShowError(errors.New("Can't create log file. Check configuration."), mainWindow)
 	}
 	image := ssdvimage.CreateSSDVImage(config)
 
 	serial, err := serialport.NewSerial(config.Data.PortName, 115200)
 	if err != nil {
-		fmt.Printf("Can't open serial port: %v", err)
+		dialog.ShowError(errors.New("Can't open serial port. Check configuration."), mainWindow)
+	} else {
+		defer serial.Close()
 	}
-	defer serial.Close()
 
 	tabs := container.NewAppTabs(
 		container.NewTabItemWithIcon("", theme.HomeIcon(), main.Content),
@@ -148,21 +151,19 @@ func main() {
 	mainWindow.SetContent(gui)
 
 	// run receiver
-	err = serial.ListenAndDecode(dataChan, ssdvChan)
-	if err != nil {
-		fmt.Printf("Problem with the serial port: %v", err)
+	if serial != nil {
+		err = serial.ListenAndDecode(dataChan, ssdvChan)
+		if err != nil {
+			fmt.Printf("Problem with the serial port: %v", err)
+		}
 	}
 
 	// threads
 	// telemetry
-	go func() {
-		receiveTelemetry(config, dataChan, console, main, log, serial, labelStatus)
-	}()
+	go receiveTelemetry(config, dataChan, console, main, log, serial, labelStatus)
 
 	// ssdv
-	go func() {
-		receiveSSDV(ssdvChan, console, image, config, labelStatus)
-	}()
+	go receiveSSDV(ssdvChan, console, image, config, labelStatus)
 
 	// clock
 	go clock(labelTime)
